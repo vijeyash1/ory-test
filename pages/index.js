@@ -1,8 +1,44 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import Head from "next/head";
+import Image from "next/image";
+import styles from "../styles/Home.module.css";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 
-export default function Home() {
+// highlight-start
+import { Configuration, V0alpha2Api } from "@ory/client";
+import { edgeConfig } from "@ory/integrations/next";
+
+const ory = new V0alpha2Api(new Configuration(edgeConfig));
+
+// Returns either the email or the username depending on the user's Identity Schema
+const getUserName = (identity) =>
+  identity.traits.email || identity.traits.username;
+// highlight-end
+
+const Home = () => {
+  const router = useRouter();
+
+  // highlight-start
+  const [session, setSession] = useState();
+  useEffect(() => {
+    ory
+      .toSession()
+      .then(({ data }) => {
+        // User has a session!
+        setSession(data);
+      })
+      .catch(() => {
+        // Redirect to login page
+        return router.push(edgeConfig.basePath + "/ui/login");
+      });
+  });
+
+  if (!session) {
+    // Still loading
+    return null;
+  }
+  // highlight-end
+
   return (
     <div className={styles.container}>
       <Head>
@@ -13,12 +49,20 @@ export default function Home() {
 
       <main className={styles.main}>
         <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
+          Welcome to{" "}
+          <a href="https://nextjs.org">
+            Next.js,{" "}
+            {
+              // highlight-next-line
+              getUserName(session?.identity)
+            }
+            !
+          </a>
         </h1>
 
         <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
+          Get started by editing{" "}
+          <code className={styles.code}>pages/index.tsx</code>
         </p>
 
         <div className={styles.grid}>
@@ -58,12 +102,14 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Powered by{' '}
+          Powered by{" "}
           <span className={styles.logo}>
             <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
           </span>
         </a>
       </footer>
     </div>
-  )
-}
+  );
+};
+
+export default Home;
